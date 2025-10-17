@@ -8,6 +8,7 @@
       async function drawCharts() {
         await drawPieChart();
         await drawCalendarChart();
+        await drawScatterChart();
       }
 
       async function drawPieChart() {
@@ -51,10 +52,30 @@
 
         chart.draw(data, options);
       }
+
+      async function drawScatterChart() {
+        // Fetch speed by distance data from the API (already in Google Charts format)
+        const response = await fetch('/api/speed_by_distance');
+        const chartData = await response.json();
+
+        var data = google.visualization.arrayToDataTable(chartData);
+
+        var options = {
+          title: 'Speed by Distance by Activity Type',
+          hAxis: {title: 'Distance (m)'},
+          vAxis: {title: 'Average Speed (m/s)'},
+          legend: {position: 'right'}
+        };
+
+        var chart = new google.visualization.ScatterChart(document.getElementById('scatterchart'));
+
+        chart.draw(data, options);
+      }
     </script>
   </head>
   <body style="margin: 20px; overflow: auto;">
     <div id="piechart" style="width: 900px; height: 500px;"></div>
     <div id="calendar" style="width: 1000px;"></div>
+    <div id="scatterchart" style="width: 900px; height: 500px;"></div>
   </body>
 </html>

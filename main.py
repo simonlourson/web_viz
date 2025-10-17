@@ -62,4 +62,43 @@ async def nb_activities_by_date():
 
     return chart_data
 
+
+@app.get("/api/speed_by_distance")
+async def speed_by_distance():
+    df = pd.read_csv("data/activities.csv")
+
+    # Select relevant columns and convert to numeric
+    df = df[["Distance", "Average Speed", "Activity Type"]]
+    # Remove commas from numbers before converting to numeric
+    df["Distance"] = df["Distance"].astype(str).str.replace(",", "")
+    df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
+    df["Average Speed"] = pd.to_numeric(df["Average Speed"], errors="coerce")
+
+    # Filter rows with valid Distance and Average Speed values
+    df = df.dropna()
+    df = df[(df["Distance"] > 0) & (df["Average Speed"] > 0)]
+
+    # Remove Swim activities (outlier)
+    df = df[df["Activity Type"] != "Swim"]
+
+    # Get unique activity types
+    activity_types = sorted(df["Activity Type"].unique())
+
+    # Format data for Google Scatter Chart with separate columns per activity type
+    # Each row represents one activity, with null for other activity types
+    chart_data = [["Distance (m)"] + activity_types]
+    for _, row in df.iterrows():
+        distance = float(row["Distance"])
+        speed = float(row["Average Speed"])
+        activity_type = row["Activity Type"]
+
+        # Create a row with the distance and speed only in the correct activity type column
+        data_row = [distance]
+        for atype in activity_types:
+            data_row.append(speed if atype == activity_type else None)
+
+        chart_data.append(data_row)
+
+    return chart_data
+
 app.mount("/", StaticFiles(directory="front", html=True), name="static")
