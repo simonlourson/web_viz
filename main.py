@@ -101,4 +101,14 @@ async def speed_by_distance():
 
     return chart_data
 
+
+@app.get("/api/numeric_columns")
+async def numeric_columns():
+    df = pd.read_csv("data/activities.csv")
+
+    # Select only numeric columns
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+
+    return numeric_cols
+
 app.mount("/", StaticFiles(directory="front", html=True), name="static")
