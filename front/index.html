@@ -8,6 +8,10 @@
       async function init() {
         await loadNumericColumns();
         await loadStringColumns();
+
+        const limitInput = document.getElementById('limit');
+        limitInput.addEventListener('input', drawChart);
+
         drawChart();
       }
 
@@ -18,7 +22,7 @@
         const dropdownX = document.getElementById('columnX');
         const dropdownY = document.getElementById('columnY');
 
-        columns.forEach(column => {
+        columns.sort().forEach(column => {
           const optionX = document.createElement('option');
           optionX.value = column;
           optionX.text = column;
@@ -40,7 +44,7 @@
 
         const dropdownFilter = document.getElementById('filter');
 
-        columns.forEach(column => {
+        columns.sort().forEach(column => {
           const option = document.createElement('option');
           option.value = column;
           option.text = column;
@@ -65,7 +69,7 @@
         const response = await fetch(`/api/distinct_values_for_column?column=${column}`);
         const values = await response.json();
 
-        values.forEach(value => {
+        values.sort().forEach(value => {
           const option = document.createElement('option');
           option.value = value;
           option.text = value;
@@ -83,23 +87,34 @@
         const dropdownY = document.getElementById('columnY');
         const dropdownFilter = document.getElementById('filter');
         const dropdownFilterValue = document.getElementById('filterValue');
+        const limitInput = document.getElementById('limit');
 
         const axeX = dropdownX.value;
         const axeY = dropdownY.value;
         const filterColumn = dropdownFilter.value;
         const filterValue = dropdownFilterValue.value;
+        const limit = limitInput.value;
 
         if (!axeX || !axeY) {
           return;
         }
 
-        let url = `/api/numeric_values?axeX=${axeX}&axeY=${axeY}`;
-        if (filterColumn && filterValue) {
-          url += `&filterColumn=${filterColumn}&filterValue=${filterValue}`;
-        }
+        const requestBody = {
+          axeX: axeX,
+          axeY: axeY,
+          filterColumn: filterColumn || null,
+          filterValue: filterValue || null,
+          limit: limit || null
+        };
 
-        console.log(url);
-        const response = await fetch(url);
+        console.log('POST /api/numeric_values', requestBody);
+        const response = await fetch('/api/numeric_values', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
         const values = await response.json();
 
         const chartData = [[axeX, axeY]];
@@ -136,6 +151,10 @@
 
       <label for="filterValue">Filter Value:</label>
       <select id="filterValue"></select>
+    </div>
+    <div>
+      <label for="limit">Limit:</label>
+      <input type="number" id="limit" min="1" placeholder="No limit">
     </div>
     <div id="chart_div" style="width: 900px; height: 500px;"></div>
   </body>

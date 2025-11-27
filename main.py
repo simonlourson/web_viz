@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 import csv
 import pandas as pd
@@ -131,9 +131,15 @@ async def distinct_values_for_column(column: str):
 
     return distinct_values
 
-# http://localhost:8000/api/numeric_values?axeX=Activity%20ID&axeY=Activity%20ID
-@app.get("/api/numeric_values")
-async def numeric_values(axeX: str, axeY: str, filterColumn: str = None, filterValue: str = None):
+@app.post("/api/numeric_values")
+async def numeric_values(request: Request):
+    body = await request.json()
+    axeX = body.get("axeX")
+    axeY = body.get("axeY")
+    filterColumn = body.get("filterColumn")
+    filterValue = body.get("filterValue")
+    limit = body.get("limit")
+
     print("debug numeric_values")
     print(axeX)
     print(axeY)
@@ -145,6 +151,19 @@ async def numeric_values(axeX: str, axeY: str, filterColumn: str = None, filterV
 
     # Select only the two requested columns
     df_filtered = df[[axeX, axeY]]
+
+    # Replace NaN and infinite values with 0
+    df_filtered = df_filtered.replace([float('inf'), float('-inf')], 0)
+    df_filtered = df_filtered.fillna(0)
+
+    # Apply limit if provided
+    if limit:
+        try:
+            limit_int = int(limit)
+            if limit_int > 0:
+                df_filtered = df_filtered.head(limit_int)
+        except ValueError:
+            pass
 
     # Convert to list of lists for easy consumption
     data = df_filtered.values.tolist()
