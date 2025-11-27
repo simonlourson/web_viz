@@ -111,4 +111,44 @@ async def numeric_columns():
 
     return numeric_cols
 
+
+@app.get("/api/string_columns")
+async def string_columns():
+    df = pd.read_csv("data/activities.csv")
+
+    # Select only string/object columns
+    string_cols = df.select_dtypes(include=["object"]).columns.tolist()
+
+    return string_cols
+
+
+@app.get("/api/distinct_values_for_column")
+async def distinct_values_for_column(column: str):
+    df = pd.read_csv("data/activities.csv")
+
+    # Get distinct values for the specified column
+    distinct_values = df[column].unique().tolist()
+
+    return distinct_values
+
+# http://localhost:8000/api/numeric_values?axeX=Activity%20ID&axeY=Activity%20ID
+@app.get("/api/numeric_values")
+async def numeric_values(axeX: str, axeY: str, filterColumn: str = None, filterValue: str = None):
+    print("debug numeric_values")
+    print(axeX)
+    print(axeY)
+    df = pd.read_csv("data/activities.csv")
+
+    # Apply filter if both filterColumn and filterValue are provided
+    if filterColumn and filterValue:
+        df = df[df[filterColumn] == filterValue]
+
+    # Select only the two requested columns
+    df_filtered = df[[axeX, axeY]]
+
+    # Convert to list of lists for easy consumption
+    data = df_filtered.values.tolist()
+
+    return data
+
 app.mount("/", StaticFiles(directory="front", html=True), name="static")

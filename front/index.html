@@ -7,6 +7,7 @@
 
       async function init() {
         await loadNumericColumns();
+        await loadStringColumns();
         drawChart();
       }
 
@@ -28,23 +29,90 @@
           optionY.text = column;
           dropdownY.appendChild(optionY);
         });
+
+        dropdownX.addEventListener('change', drawChart);
+        dropdownY.addEventListener('change', drawChart);
       }
 
-      function drawChart() {
-        var data = google.visualization.arrayToDataTable([
-          ['Age', 'Weight'],
-          [ 8,      12],
-          [ 4,      5.5],
-          [ 11,     14],
-          [ 4,      5],
-          [ 3,      3.5],
-          [ 6.5,    7]
-        ]);
+      async function loadStringColumns() {
+        const response = await fetch('/api/string_columns');
+        const columns = await response.json();
+
+        const dropdownFilter = document.getElementById('filter');
+
+        columns.forEach(column => {
+          const option = document.createElement('option');
+          option.value = column;
+          option.text = column;
+          dropdownFilter.appendChild(option);
+        });
+
+        dropdownFilter.addEventListener('change', loadFilterValues);
+      }
+
+      async function loadFilterValues() {
+        const dropdownFilter = document.getElementById('filter');
+        const dropdownFilterValue = document.getElementById('filterValue');
+
+        const column = dropdownFilter.value;
+
+        if (!column) {
+          return;
+        }
+
+        dropdownFilterValue.innerHTML = '';
+
+        const response = await fetch(`/api/distinct_values_for_column?column=${column}`);
+        const values = await response.json();
+
+        values.forEach(value => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.text = value;
+          dropdownFilterValue.appendChild(option);
+        });
+
+        dropdownFilterValue.removeEventListener('change', drawChart);
+        dropdownFilterValue.addEventListener('change', drawChart);
+
+        drawChart();
+      }
+
+      async function drawChart() {
+        const dropdownX = document.getElementById('columnX');
+        const dropdownY = document.getElementById('columnY');
+        const dropdownFilter = document.getElementById('filter');
+        const dropdownFilterValue = document.getElementById('filterValue');
+
+        const axeX = dropdownX.value;
+        const axeY = dropdownY.value;
+        const filterColumn = dropdownFilter.value;
+        const filterValue = dropdownFilterValue.value;
+
+        if (!axeX || !axeY) {
+          return;
+        }
+
+        let url = `/api/numeric_values?axeX=${axeX}&axeY=${axeY}`;
+        if (filterColumn && filterValue) {
+          url += `&filterColumn=${filterColumn}&filterValue=${filterValue}`;
+        }
+
+        console.log(url);
+        const response = await fetch(url);
+        const values = await response.json();
+
+        const chartData = [[axeX, axeY]];
+        values.forEach(row => {
+          chartData.push(row);
+        });
+
+        var data = google.visualization.arrayToDataTable(chartData);
 
         var options = {
-          title: 'Age vs. Weight comparison',
-          hAxis: {title: 'Age', minValue: 0, maxValue: 15},
-          vAxis: {title: 'Weight', minValue: 0, maxValue: 15},
+          title: `${axeX} vs ${axeY}`,
+          hAxis: {title: axeX},
+          vAxis: {title: axeY},
           legend: 'none'
         };
 
@@ -61,6 +129,13 @@
 
       <label for="columnY">Axe Y:</label>
       <select id="columnY"></select>
+    </div>
+    <div>
+      <label for="filter">Filter:</label>
+      <select id="filter"></select>
+
+      <label for="filterValue">Filter Value:</label>
+      <select id="filterValue"></select>
     </div>
     <div id="chart_div" style="width: 900px; height: 500px;"></div>
   </body>
