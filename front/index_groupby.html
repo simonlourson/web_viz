@@ -1,0 +1,105 @@
+<html>
+  <head>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(init);
+
+      async function init() {
+        await loadColumns();
+
+        const operationDropdown = document.getElementById('operation');
+        operationDropdown.addEventListener('change', drawChart);
+      }
+
+      async function loadColumns() {
+        const response = await fetch('/api/all_columns');
+        const columns = await response.json();
+
+        const dimensionDropdown = document.getElementById('dimension');
+        const measureDropdown = document.getElementById('measure');
+
+        // Sort columns alphabetically
+        columns.sort().forEach(column => {
+          const dimensionOption = document.createElement('option');
+          dimensionOption.value = column;
+          dimensionOption.text = column;
+          dimensionDropdown.appendChild(dimensionOption);
+
+          const measureOption = document.createElement('option');
+          measureOption.value = column;
+          measureOption.text = column;
+          measureDropdown.appendChild(measureOption);
+        });
+
+        dimensionDropdown.addEventListener('change', drawChart);
+        measureDropdown.addEventListener('change', drawChart);
+      }
+
+      async function drawChart() {
+        const dimensionDropdown = document.getElementById('dimension');
+        const measureDropdown = document.getElementById('measure');
+        const operationDropdown = document.getElementById('operation');
+
+        const dimension = dimensionDropdown.value;
+        const measure = measureDropdown.value;
+        const operation = operationDropdown.value;
+
+        if (!dimension || !measure || !operation) {
+          return;
+        }
+
+        const requestBody = {
+          dimension: dimension,
+          measure: measure,
+          operation: operation
+        };
+
+        console.log('POST /api/groupby_values', requestBody);
+        const response = await fetch('/api/groupby_values', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+        const chartData = await response.json();
+
+        if (chartData.error) {
+          console.error('Error:', chartData.error);
+          return;
+        }
+
+        var data = google.visualization.arrayToDataTable(chartData);
+
+        var options = {
+          title: `${operation}(${measure}) by ${dimension}`,
+          hAxis: {title: dimension},
+          vAxis: {title: `${operation}(${measure})`},
+          legend: 'none'
+        };
+
+        var chart = new google.visualization.ColumnChart(document.getElementById('chart_div'));
+
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
+  <body>
+    <div>
+      <label for="dimension">Dimension:</label>
+      <select id="dimension"></select>
+
+      <label for="measure">Measure:</label>
+      <select id="measure"></select>
+
+      <label for="operation">Operation:</label>
+      <select id="operation">
+        <option value="Avg">Avg</option>
+        <option value="Max">Max</option>
+        <option value="Min">Min</option>
+      </select>
+    </div>
+    <div id="chart_div" style="width: 900px; height: 500px;"></div>
+  </body>
+</html>

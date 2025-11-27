@@ -131,6 +131,49 @@ async def distinct_values_for_column(column: str):
 
     return distinct_values
 
+@app.get("/api/all_columns")
+async def all_columns():
+    df = pd.read_csv("data/activities.csv")
+    return df.columns.tolist()
+
+
+@app.post("/api/groupby_values")
+async def groupby_values(request: Request):
+    body = await request.json()
+    dimension = body.get("dimension")
+    measure = body.get("measure")
+    operation = body.get("operation")
+
+    if not dimension or not measure or not operation:
+        return {"error": "Missing required parameters"}
+
+    df = pd.read_csv("data/activities.csv")
+
+    # Convert measure column to numeric, coercing errors to NaN
+    df[measure] = pd.to_numeric(df[measure], errors="coerce")
+
+    # Group by dimension and apply operation
+    if operation == "Avg":
+        result = df.groupby(dimension)[measure].mean()
+    elif operation == "Max":
+        result = df.groupby(dimension)[measure].max()
+    elif operation == "Min":
+        result = df.groupby(dimension)[measure].min()
+    else:
+        return {"error": "Invalid operation"}
+
+    # Replace NaN and infinite values with 0
+    result = result.replace([float('inf'), float('-inf')], 0)
+    result = result.fillna(0)
+
+    # Format data for Google Charts: [[dimension, measure], [value1, result1], ...]
+    chart_data = [[dimension, f"{operation}({measure})"]]
+    for dim_value, agg_value in result.items():
+        chart_data.append([str(dim_value), float(agg_value)])
+
+    return chart_data
+
+
 @app.post("/api/numeric_values")
 async def numeric_values(request: Request):
     body = await request.json()
